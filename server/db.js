@@ -32,4 +32,30 @@ if (!existingColumns.includes("website")) {
     db.exec("ALTER TABLE clientes ADD COLUMN website TEXT");
 }
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sop_demanda (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+          clienteId INTEGER,
+              produto TEXT NOT NULL,
+                  mes TEXT NOT NULL,
+                      quantidadePrevista INTEGER DEFAULT 0,
+                          quantidadeConfirmada INTEGER DEFAULT 0,
+                              obs TEXT,
+                                  FOREIGN KEY (clienteId) REFERENCES clientes(id)
+                                    )
+                                    `);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sop_producao (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+          produto TEXT NOT NULL,
+              mes TEXT NOT NULL,
+                  estoqueAtual INTEGER DEFAULT 0,
+                      quantidadePlanejada INTEGER DEFAULT 0,
+                          quantidadeProduzida INTEGER DEFAULT 0,
+                              status TEXT DEFAULT 'Planejado',
+                                  obs TEXT
+                                    )
+                                    `);
+
 module.exports = db;
