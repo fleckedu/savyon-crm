@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Search, Users, TrendingUp, Clock, Archive, X, Mail, Phone, Building2, ChevronLeft, ChevronRight, Plus, Pencil, Check, Loader2, AlertCircle, LayoutGrid, Table2, ArrowRight } from "lucide-react";
+import { Search, Users, TrendingUp, Clock, Archive, X, Mail, Phone, Building2, MapPin, Globe, ChevronLeft, ChevronRight, Plus, Pencil, Check, Loader2, AlertCircle, LayoutGrid, Table2, ArrowRight, ClipboardList } from "lucide-react";
+import SOPTab from "./SOPTab";
 
 const STATUS_STYLE = {
-  Ativo:    { bg: "#E8F3EC", fg: "#2F7D5E", dot: "#2F7D5E" },
+  Ativo: { bg: "#E8F3EC", fg: "#2F7D5E", dot: "#2F7D5E" },
   Prospect: { bg: "#EDF1F7", fg: "#2F4C74", dot: "#5578A6" },
-  Revisar:  { bg: "#FDF3E3", fg: "#9C6B00", dot: "#C98A00" },
-  Inativo:  { bg: "#F1F1F1", fg: "#767676", dot: "#A0A0A0" },
+  Revisar: { bg: "#FDF3E3", fg: "#9C6B00", dot: "#C98A00" },
+  Inativo: { bg: "#F1F1F1", fg: "#767676", dot: "#A0A0A0" },
 };
 const STATUS_OPTIONS = ["Ativo", "Prospect", "Revisar", "Inativo"];
 const NAVY = "#1F3864";
@@ -131,6 +132,18 @@ function ClientDrawer({ client, onClose, onSave, saving }) {
           </div>
 
           <div className="border-t border-gray-100 pt-4 space-y-3">
+            <div className="text-xs uppercase tracking-wide text-gray-400 font-medium">Localização & Web</div>
+            <div className="flex items-start gap-2.5">
+              <MapPin size={15} className="text-gray-400 mt-1 shrink-0" />
+              <div className="flex-1"><Field label="Endereço" value={draft.endereco} onChange={set("endereco")} editing={editing} textarea /></div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <Globe size={15} className="text-gray-400 mt-1 shrink-0" />
+              <div className="flex-1"><Field label="Website" value={draft.website} onChange={set("website")} editing={editing} /></div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100 pt-4 space-y-3">
             <div className="flex items-start gap-2.5">
               <Building2 size={15} className="text-gray-400 mt-1 shrink-0" />
               <div className="flex-1"><Field label="Contato Principal" value={draft.contato} onChange={set("contato")} editing={editing} /></div>
@@ -179,6 +192,7 @@ function NewClientModal({ onClose, onCreate, saving }) {
   const [form, setForm] = useState({
     cliente: "", pais: "", ultimaCompra: "", clienteDesde: "", nPedidos: 0,
     status: "Revisar", nit: "", contato: "", email: "", telefone: "", obs: "", funil: "Contatado",
+    endereco: "", website: "",
   });
   function set(field) { return (v) => setForm((f) => ({ ...f, [field]: v })); }
   const canSave = form.cliente.trim().length > 0;
@@ -214,6 +228,8 @@ function NewClientModal({ onClose, onCreate, saving }) {
             <Field label="E-mail" value={form.email} onChange={set("email")} editing />
             <Field label="Telefone" value={form.telefone} onChange={set("telefone")} editing />
             <Field label="NIT / Tax ID" value={form.nit} onChange={set("nit")} editing />
+            <div className="col-span-2"><Field label="Endereço" value={form.endereco} onChange={set("endereco")} editing /></div>
+            <Field label="Website" value={form.website} onChange={set("website")} editing />
           </div>
           <Field label="Observação" value={form.obs} onChange={set("obs")} editing textarea />
         </div>
@@ -457,12 +473,17 @@ export default function SavyonCRM() {
             <button onClick={() => setView("funil")} className={"px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1.5 " + (view === "funil" ? "bg-white shadow-sm text-gray-800" : "text-gray-500")}>
               <LayoutGrid size={14} /> Funil 2026-2
             </button>
+            <button onClick={() => setView("sop")} className={"px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1.5 " + (view === "sop" ? "bg-white shadow-sm text-gray-800" : "text-gray-500")}>
+              <ClipboardList size={14} /> S&OP
+            </button>
           </div>
+          {view !== "sop" && (
           <div className="relative flex-1 min-w-[220px]">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input value={query} onChange={(e) => resetPage(setQuery)(e.target.value)} placeholder="Buscar por nome, e-mail, contato ou país..."
               className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1F3864]/20 focus:border-[#1F3864]" />
           </div>
+          )}
           {view === "tabela" && (
             <>
               <select value={statusFilter} onChange={(e) => resetPage(setStatusFilter)(e.target.value)} className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1F3864]/20 bg-white">
@@ -475,7 +496,9 @@ export default function SavyonCRM() {
           )}
         </div>
 
-        {view === "funil" ? (
+        {view === "sop" ? (
+          <SOPTab clientes={clientes} />
+        ) : view === "funil" ? (
           <>
             <div className="text-sm text-gray-500 mb-3">
               {funnelCounts.total} leads na campanha de mailing 2026-2 · {funnelCounts.convertido} convertidos até agora
