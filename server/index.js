@@ -11,7 +11,7 @@ app.use(express.json());
 const CLIENT_FIELDS = [
   "cliente", "pais", "ultimaCompra", "clienteDesde", "nPedidos",
   "status", "nit", "contato", "email", "telefone", "obs", "funil",
-  "endereco", "website",
+  "endereco", "website", "importer", "consignee", "notify", "forwarder",
 ];
 
 function pickClientFields(body) {

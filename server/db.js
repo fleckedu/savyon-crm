@@ -31,6 +31,18 @@ if (!existingColumns.includes("endereco")) {
 if (!existingColumns.includes("website")) {
     db.exec("ALTER TABLE clientes ADD COLUMN website TEXT");
 }
+if (!existingColumns.includes("importer")) {
+    db.exec("ALTER TABLE clientes ADD COLUMN importer TEXT");
+}
+if (!existingColumns.includes("consignee")) {
+    db.exec("ALTER TABLE clientes ADD COLUMN consignee TEXT");
+}
+if (!existingColumns.includes("notify")) {
+    db.exec("ALTER TABLE clientes ADD COLUMN notify TEXT");
+}
+if (!existingColumns.includes("forwarder")) {
+    db.exec("ALTER TABLE clientes ADD COLUMN forwarder TEXT");
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS sop_demanda (
