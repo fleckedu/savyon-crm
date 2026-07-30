@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Search, Users, TrendingUp, Clock, Archive, X, Mail, Phone, Building2, MapPin, Globe, ChevronLeft, ChevronRight, Plus, Pencil, Check, Loader2, AlertCircle, LayoutGrid, Table2, ArrowRight, ClipboardList } from "lucide-react";
+import { Search, Users, TrendingUp, Clock, Archive, X, Mail, Phone, Building2, MapPin, Globe, ChevronLeft, ChevronRight, Plus, Pencil, Check, Loader2, AlertCircle, LayoutGrid, Table2, ArrowRight, ClipboardList, Ship, Truck } from "lucide-react";
 import SOPTab from "./SOPTab";
 
 const STATUS_STYLE = {
@@ -158,6 +158,26 @@ function ClientDrawer({ client, onClose, onSave, saving }) {
             </div>
           </div>
 
+          <div className="border-t border-gray-100 pt-4 space-y-3">
+            <div className="text-xs uppercase tracking-wide text-gray-400 font-medium">Logística internacional</div>
+            <div className="flex items-start gap-2.5">
+              <Ship size={15} className="text-gray-400 mt-1 shrink-0" />
+              <div className="flex-1"><Field label="Importador" value={draft.importer} onChange={set("importer")} editing={editing} /></div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <Ship size={15} className="text-gray-400 mt-1 shrink-0" />
+              <div className="flex-1"><Field label="Consignatário (Consignee)" value={draft.consignee} onChange={set("consignee")} editing={editing} /></div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <Mail size={15} className="text-gray-400 mt-1 shrink-0" />
+              <div className="flex-1"><Field label="Notify Party" value={draft.notify} onChange={set("notify")} editing={editing} /></div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <Truck size={15} className="text-gray-400 mt-1 shrink-0" />
+              <div className="flex-1"><Field label="Forwarder" value={draft.forwarder} onChange={set("forwarder")} editing={editing} /></div>
+            </div>
+          </div>
+
           <div className="border-t border-gray-100 pt-4">
             <Field label="Observação" value={draft.obs} onChange={set("obs")} editing={editing} textarea />
           </div>
@@ -192,7 +212,7 @@ function NewClientModal({ onClose, onCreate, saving }) {
   const [form, setForm] = useState({
     cliente: "", pais: "", ultimaCompra: "", clienteDesde: "", nPedidos: 0,
     status: "Revisar", nit: "", contato: "", email: "", telefone: "", obs: "", funil: "Contatado",
-    endereco: "", website: "",
+    endereco: "", website: "", importer: "", consignee: "", notify: "", forwarder: "",
   });
   function set(field) { return (v) => setForm((f) => ({ ...f, [field]: v })); }
   const canSave = form.cliente.trim().length > 0;
@@ -497,7 +517,7 @@ export default function SavyonCRM() {
         </div>
 
         {view === "sop" ? (
-          <SOPTab clientes={clientes} />
+          <SOPTab clientes={clientes} onOpenClient={(c) => setSelectedId(c.id)} />
         ) : view === "funil" ? (
           <>
             <div className="text-sm text-gray-500 mb-3">

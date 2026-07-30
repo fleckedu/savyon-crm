@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Plus, X, Loader2, Pencil, Trash2, PackageSearch, Factory, AlertCircle } from "lucide-react";
+import { Plus, X, Loader2, Pencil, Trash2, PackageSearch, Factory, AlertCircle, Users2, Ship, Truck, Mail, Phone, Building2, RotateCcw } from "lucide-react";
 
 const NAVY = "#1F3864";
 
@@ -9,6 +9,142 @@ const PRODUCAO_STATUS_STYLE = {
   "Em produção": { bg: "#FDF3E3", fg: "#9C6B00" },
   "Concluído": { bg: "#E8F3EC", fg: "#2F7D5E" },
 };
+
+const CLIENT_STATUS_STYLE = {
+  Ativo:    { bg: "#E8F3EC", fg: "#2F7D5E", dot: "#2F7D5E" },
+  Prospect: { bg: "#EDF1F7", fg: "#2F4C74", dot: "#5578A6" },
+  Revisar:  { bg: "#FDF3E3", fg: "#9C6B00", dot: "#C98A00" },
+  Inativo:  { bg: "#F1F1F1", fg: "#767676", dot: "#A0A0A0" },
+};
+
+function ClientStatusBadge({ status }) {
+  const s = CLIENT_STATUS_STYLE[status] || CLIENT_STATUS_STYLE.Inativo;
+  return (
+    <span style={{ backgroundColor: s.bg, color: s.fg }} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap">
+      <span style={{ backgroundColor: s.dot }} className="w-1.5 h-1.5 rounded-full" />
+      {status}
+    </span>
+  );
+}
+
+function OpsInfoRow({ icon: Icon, label, value }) {
+  return (
+    <div className="flex items-start gap-2 text-xs">
+      <Icon size={13} className="text-gray-400 mt-0.5 shrink-0" />
+      <div className="min-w-0">
+        <span className="text-gray-400">{label}: </span>
+        <span className={value ? "text-gray-700 font-medium" : "text-gray-300"}>{value || "não informado"}</span>
+      </div>
+    </div>
+  );
+}
+
+function ClientOpsCard({ client, onOpen }) {
+  const hasLogistics = client.importer || client.consignee || client.notify || client.forwarder;
+  return (
+    <div onClick={() => onOpen(client)} className="bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-gray-800 truncate">{client.cliente}</div>
+          <div className="text-xs text-gray-400 truncate">{client.pais && client.pais !== "A confirmar" ? client.pais : "País a confirmar"}</div>
+        </div>
+        <ClientStatusBadge status={client.status} />
+      </div>
+
+      <div className="space-y-1 border-t border-gray-100 pt-3">
+        <OpsInfoRow icon={Building2} label="Contato" value={client.contato !== "A confirmar" ? client.contato : ""} />
+        <OpsInfoRow icon={Mail} label="E-mail" value={client.email !== "A confirmar" ? client.email : ""} />
+        <OpsInfoRow icon={Phone} label="Telefone" value={client.telefone !== "A confirmar" ? client.telefone : ""} />
+      </div>
+
+      <div className={"space-y-1 border-t border-gray-100 pt-3 " + (hasLogistics ? "" : "opacity-60")}>
+        <OpsInfoRow icon={Ship} label="Importador" value={client.importer} />
+        <OpsInfoRow icon={Ship} label="Consignee" value={client.consignee} />
+        <OpsInfoRow icon={Mail} label="Notify" value={client.notify} />
+        <OpsInfoRow icon={Truck} label="Forwarder" value={client.forwarder} />
+      </div>
+
+      <div className="flex items-center justify-between text-xs text-gray-400 border-t border-gray-100 pt-3 tabular-nums">
+        <span>{client.nPedidos} pedido{client.nPedidos === 1 ? "" : "s"}</span>
+        <span>Última compra: {client.ultimaCompra || "—"}</span>
+      </div>
+    </div>
+  );
+}
+
+function OpsSection({ title, subtitle, icon: Icon, accent, clients, onOpen, emptyLabel }) {
+  const PAGE = 30;
+  const [visible, setVisible] = useState(PAGE);
+  useEffect(() => { setVisible(PAGE); }, [clients]);
+  const shown = clients.slice(0, visible);
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center gap-2 mb-1">
+        <Icon size={16} style={{ color: accent }} />
+        <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
+        <span className="text-xs text-gray-400 tabular-nums">({clients.length})</span>
+      </div>
+      {subtitle && <div className="text-xs text-gray-400 mb-3">{subtitle}</div>}
+      {clients.length === 0 ? (
+        <div className="text-xs text-gray-300 text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">{emptyLabel}</div>
+      ) : (
+        <>
+          <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}>
+            {shown.map((c) => <ClientOpsCard key={c.id} client={c} onOpen={onOpen} />)}
+          </div>
+          {visible < clients.length && (
+            <div className="flex justify-center mt-4">
+              <button onClick={() => setVisible((v) => v + PAGE)}
+                className="text-xs font-medium rounded-lg px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50">
+                Carregar mais ({clients.length - visible} restantes)
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function ClientCardsBoard({ clientes, onOpen }) {
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const matches = (c) => !q ||
+    (c.cliente || "").toLowerCase().includes(q) ||
+    (c.pais || "").toLowerCase().includes(q) ||
+    (c.contato || "").toLowerCase().includes(q) ||
+    (c.importer || "").toLowerCase().includes(q) ||
+    (c.consignee || "").toLowerCase().includes(q);
+
+  const ativos = clientes.filter((c) => c.status === "Ativo" && matches(c));
+  const inativos = clientes
+    .filter((c) => c.status === "Inativo" && matches(c))
+    .slice()
+    .sort((a, b) => (b.ultimaCompra || "").localeCompare(a.ultimaCompra || ""));
+
+  return (
+    <div>
+      <div className="mb-4">
+        <input value={query} onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar por cliente, país, contato, importador..."
+          className="w-full max-w-md text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1F3864]/20 focus:border-[#1F3864]" />
+      </div>
+      <OpsSection
+        title="Clientes ativos" icon={Ship} accent="#2F7D5E"
+        subtitle="Contatos e logística internacional compilados num só lugar para o time de comércio exterior."
+        clients={ativos} onOpen={onOpen}
+        emptyLabel="Nenhum cliente ativo com essa busca."
+      />
+      <OpsSection
+        title="Inativos — candidatos a recuperação" icon={RotateCcw} accent="#B05A2E"
+        subtitle="Clientes sem pedido recente. Histórico e contatos preservados para retomar contato."
+        clients={inativos} onOpen={onOpen}
+        emptyLabel="Nenhum cliente inativo com essa busca."
+      />
+    </div>
+  );
+}
 
 function StatusPill({ status }) {
   const s = PRODUCAO_STATUS_STYLE[status] || PRODUCAO_STATUS_STYLE.Planejado;
@@ -131,8 +267,8 @@ function ProducaoModal({ initial, onClose, onSave, saving }) {
   );
 }
 
-export default function SOPTab({ clientes }) {
-  const [subView, setSubView] = useState("demanda");
+export default function SOPTab({ clientes, onOpenClient }) {
+  const [subView, setSubView] = useState("cards");
   const [demanda, setDemanda] = useState(null);
   const [producao, setProducao] = useState(null);
   const [loadError, setLoadError] = useState(false);
@@ -254,6 +390,9 @@ export default function SOPTab({ clientes }) {
 
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex flex-wrap gap-3 items-center justify-between">
         <div className="flex bg-gray-100 rounded-lg p-1 shrink-0">
+          <button onClick={() => setSubView("cards")} className={"px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1.5 " + (subView === "cards" ? "bg-white shadow-sm text-gray-800" : "text-gray-500")}>
+            <Users2 size={14} /> Cards de clientes
+          </button>
           <button onClick={() => setSubView("demanda")} className={"px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1.5 " + (subView === "demanda" ? "bg-white shadow-sm text-gray-800" : "text-gray-500")}>
             <PackageSearch size={14} /> Demanda do cliente
           </button>
@@ -261,18 +400,21 @@ export default function SOPTab({ clientes }) {
             <Factory size={14} /> Produção & Estoque
           </button>
         </div>
-        {subView === "demanda" ? (
+        {subView === "demanda" && (
           <button onClick={() => setShowNewDemanda(true)} style={{ backgroundColor: NAVY }} className="text-white text-sm font-medium rounded-lg px-4 py-2 flex items-center gap-2">
             <Plus size={16} /> Nova demanda
           </button>
-        ) : (
+        )}
+        {subView === "producao" && (
           <button onClick={() => setShowNewProducao(true)} style={{ backgroundColor: NAVY }} className="text-white text-sm font-medium rounded-lg px-4 py-2 flex items-center gap-2">
             <Plus size={16} /> Novo planejamento
           </button>
         )}
       </div>
 
-      {subView === "demanda" ? (
+      {subView === "cards" ? (
+        <ClientCardsBoard clientes={clientes} onOpen={onOpenClient} />
+      ) : subView === "demanda" ? (
         <>
           <div className="text-sm text-gray-500 mb-3">
             {demanda.length} registros · {demandaTotais.prevista} un. previstas · {demandaTotais.confirmada} un. confirmadas
