@@ -56,6 +56,13 @@ app.patch("/api/clientes/:id", (req, res) => {
   res.json(updated);
 });
 
+app.delete("/api/clientes/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const info = db.prepare("DELETE FROM clientes WHERE id = ?").run(id);
+  if (info.changes === 0) return res.status(404).json({ error: "cliente não encontrado" });
+  res.status(204).end();
+});
+
 // ---- S&OP: Demanda do cliente ----
 
 const DEMANDA_FIELDS = ["clienteId", "produto", "mes", "quantidadePrevista", "quantidadeConfirmada", "obs"];

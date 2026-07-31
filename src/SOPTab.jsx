@@ -39,7 +39,7 @@ function OpsInfoRow({ icon: Icon, label, value }) {
   );
 }
 
-function ClientOpsCard({ client, onOpen }) {
+function ClientOpsCard({ client, onOpen, onDelete }) {
   const hasLogistics = client.importer || client.consignee || client.notify || client.forwarder;
   return (
     <div onClick={() => onOpen(client)} className="bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer flex flex-col gap-3">
@@ -48,7 +48,16 @@ function ClientOpsCard({ client, onOpen }) {
           <div className="text-sm font-semibold text-gray-800 truncate">{client.cliente}</div>
           <div className="text-xs text-gray-400 truncate">{client.pais && client.pais !== "A confirmar" ? client.pais : "País a confirmar"}</div>
         </div>
-        <ClientStatusBadge status={client.status} />
+        <div className="flex items-center gap-2 shrink-0">
+          <ClientStatusBadge status={client.status} />
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(client); }}
+            title="Excluir cliente"
+            className="text-gray-300 hover:text-red-600 shrink-0"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
       </div>
 
       <div className="space-y-1 border-t border-gray-100 pt-3">
@@ -72,7 +81,7 @@ function ClientOpsCard({ client, onOpen }) {
   );
 }
 
-function OpsSection({ title, subtitle, icon: Icon, accent, clients, onOpen, emptyLabel }) {
+function OpsSection({ title, subtitle, icon: Icon, accent, clients, onOpen, onDelete, emptyLabel }) {
   const PAGE = 30;
   const [visible, setVisible] = useState(PAGE);
   useEffect(() => { setVisible(PAGE); }, [clients]);
@@ -91,7 +100,7 @@ function OpsSection({ title, subtitle, icon: Icon, accent, clients, onOpen, empt
       ) : (
         <>
           <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}>
-            {shown.map((c) => <ClientOpsCard key={c.id} client={c} onOpen={onOpen} />)}
+            {shown.map((c) => <ClientOpsCard key={c.id} client={c} onOpen={onOpen} onDelete={onDelete} />)}
           </div>
           {visible < clients.length && (
             <div className="flex justify-center mt-4">
@@ -107,7 +116,7 @@ function OpsSection({ title, subtitle, icon: Icon, accent, clients, onOpen, empt
   );
 }
 
-function ClientCardsBoard({ clientes, onOpen }) {
+function ClientCardsBoard({ clientes, onOpen, onDelete }) {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
   const matches = (c) => !q ||
@@ -133,13 +142,13 @@ function ClientCardsBoard({ clientes, onOpen }) {
       <OpsSection
         title="Clientes ativos" icon={Ship} accent="#2F7D5E"
         subtitle="Contatos e logística internacional compilados num só lugar para o time de comércio exterior."
-        clients={ativos} onOpen={onOpen}
+        clients={ativos} onOpen={onOpen} onDelete={onDelete}
         emptyLabel="Nenhum cliente ativo com essa busca."
       />
       <OpsSection
         title="Inativos — candidatos a recuperação" icon={RotateCcw} accent="#B05A2E"
         subtitle="Clientes sem pedido recente. Histórico e contatos preservados para retomar contato."
-        clients={inativos} onOpen={onOpen}
+        clients={inativos} onOpen={onOpen} onDelete={onDelete}
         emptyLabel="Nenhum cliente inativo com essa busca."
       />
     </div>
@@ -267,7 +276,7 @@ function ProducaoModal({ initial, onClose, onSave, saving }) {
   );
 }
 
-export default function SOPTab({ clientes, onOpenClient }) {
+export default function SOPTab({ clientes, onOpenClient, onDeleteClient }) {
   const [subView, setSubView] = useState("cards");
   const [demanda, setDemanda] = useState(null);
   const [producao, setProducao] = useState(null);
@@ -413,7 +422,7 @@ export default function SOPTab({ clientes, onOpenClient }) {
       </div>
 
       {subView === "cards" ? (
-        <ClientCardsBoard clientes={clientes} onOpen={onOpenClient} />
+        <ClientCardsBoard clientes={clientes} onOpen={onOpenClient} onDelete={onDeleteClient} />
       ) : subView === "demanda" ? (
         <>
           <div className="text-sm text-gray-500 mb-3">

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Search, Users, TrendingUp, Clock, Archive, X, Mail, Phone, Building2, MapPin, Globe, ChevronLeft, ChevronRight, Plus, Pencil, Check, Loader2, AlertCircle, LayoutGrid, Table2, ArrowRight, ClipboardList, Ship, Truck } from "lucide-react";
+import { Search, Users, TrendingUp, Clock, Archive, X, Mail, Phone, Building2, MapPin, Globe, ChevronLeft, ChevronRight, Plus, Pencil, Check, Loader2, AlertCircle, LayoutGrid, Table2, ArrowRight, ClipboardList, Ship, Truck, Trash2 } from "lucide-react";
 import SOPTab from "./SOPTab";
 
 const STATUS_STYLE = {
@@ -76,7 +76,7 @@ function Field({ label, value, onChange, editing, textarea }) {
   );
 }
 
-function ClientDrawer({ client, onClose, onSave, saving }) {
+function ClientDrawer({ client, onClose, onSave, onDelete, saving, deleting }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(client);
 
@@ -197,10 +197,17 @@ function ClientDrawer({ client, onClose, onSave, saving }) {
               </button>
             </>
           ) : (
-            <button onClick={() => setEditing(true)}
-              className="flex-1 text-sm font-medium rounded-lg py-2.5 border border-gray-200 text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-2">
-              <Pencil size={14} /> Editar cliente
-            </button>
+            <>
+              <button onClick={() => setEditing(true)}
+                className="flex-1 text-sm font-medium rounded-lg py-2.5 border border-gray-200 text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-2">
+                <Pencil size={14} /> Editar cliente
+              </button>
+              <button onClick={() => onDelete(client)} disabled={deleting}
+                title="Excluir cliente"
+                className="px-4 text-sm font-medium rounded-lg py-2.5 border border-gray-200 text-red-600 hover:bg-red-50 flex items-center justify-center gap-2 disabled:opacity-50">
+                {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -330,6 +337,7 @@ export default function SavyonCRM() {
   const [selectedId, setSelectedId] = useState(null);
   const [showNew, setShowNew] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [syncNote, setSyncNote] = useState("");
   const [view, setView] = useState("tabela");
   const PAGE_SIZE = 25;
@@ -371,6 +379,23 @@ export default function SavyonCRM() {
 
   function handleSaveClient(draft) {
     patchClient(draft.id, draft);
+  }
+
+  async function handleDeleteClient(client) {
+    if (!window.confirm(`Excluir "${client.cliente}"? Essa ação não pode ser desfeita.`)) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/clientes/${client.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("request failed");
+      setClientes((prev) => prev.filter((c) => c.id !== client.id));
+      setSelectedId((id) => (id === client.id ? null : id));
+      setSyncNote("");
+    } catch (e) {
+      console.error("Erro ao excluir cliente:", e);
+      setSyncNote("Não foi possível excluir agora — tente de novo em instantes.");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   function handleMoveStage(client, stage) {
@@ -517,7 +542,7 @@ export default function SavyonCRM() {
         </div>
 
         {view === "sop" ? (
-          <SOPTab clientes={clientes} onOpenClient={(c) => setSelectedId(c.id)} />
+          <SOPTab clientes={clientes} onOpenClient={(c) => setSelectedId(c.id)} onDeleteClient={handleDeleteClient} />
         ) : view === "funil" ? (
           <>
             <div className="text-sm text-gray-500 mb-3">
@@ -573,7 +598,7 @@ export default function SavyonCRM() {
       </div>
 
       {selected && (
-        <ClientDrawer key={selected.id} client={selected} onClose={() => setSelectedId(null)} onSave={handleSaveClient} saving={saving} />
+        <ClientDrawer key={selected.id} client={selected} onClose={() => setSelectedId(null)} onSave={handleSaveClient} onDelete={handleDeleteClient} saving={saving} deleting={deleting} />
       )}
       {showNew && <NewClientModal onClose={() => setShowNew(false)} onCreate={handleCreateClient} saving={saving} />}
     </div>
