@@ -10,11 +10,11 @@ function seedIfEmpty() {
   const seed = JSON.parse(fs.readFileSync(seedPath, "utf-8"));
 
   const insert = db.prepare(`
-    INSERT INTO clientes (cliente, pais, ultimaCompra, clienteDesde, nPedidos, status, nit, contato, email, telefone, obs, funil)
-    VALUES (@cliente, @pais, @ultimaCompra, @clienteDesde, @nPedidos, @status, @nit, @contato, @email, @telefone, @obs, @funil)
+    INSERT INTO clientes (cliente, pais, ultimaCompra, clienteDesde, nPedidos, status, nit, contato, email, telefone, obs, funil, endereco, website, importer, consignee, notify, forwarder)
+    VALUES (@cliente, @pais, @ultimaCompra, @clienteDesde, @nPedidos, @status, @nit, @contato, @email, @telefone, @obs, @funil, @endereco, @website, @importer, @consignee, @notify, @forwarder)
   `);
 
-  const FIELDS = ["cliente", "pais", "ultimaCompra", "clienteDesde", "nPedidos", "status", "nit", "contato", "email", "telefone", "obs", "funil"];
+  const FIELDS = ["cliente", "pais", "ultimaCompra", "clienteDesde", "nPedidos", "status", "nit", "contato", "email", "telefone", "obs", "funil", "endereco", "website", "importer", "consignee", "notify", "forwarder"];
 
   db.exec("BEGIN");
   try {
