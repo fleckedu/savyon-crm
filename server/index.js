@@ -1,9 +1,7 @@
 const path = require("path");
 const express = require("express");
-const db = require("./db");
+const { pool, init, insertRow, updateRow } = require("./db");
 const seedIfEmpty = require("./seed");
-
-seedIfEmpty();
 
 const app = express();
 app.use(express.json());
@@ -14,52 +12,42 @@ const CLIENT_FIELDS = [
   "endereco", "website", "importer", "consignee", "notify", "forwarder",
 ];
 
-function pickClientFields(body) {
+function pickFields(fields, body) {
   const out = {};
-  for (const field of CLIENT_FIELDS) {
+  for (const field of fields) {
     if (body[field] !== undefined) out[field] = body[field];
   }
   return out;
 }
 
-app.get("/api/clientes", (req, res) => {
-  const rows = db.prepare("SELECT * FROM clientes ORDER BY id").all();
+app.get("/api/clientes", async (req, res) => {
+  const { rows } = await pool.query("SELECT * FROM clientes ORDER BY id");
   res.json(rows);
 });
 
-app.post("/api/clientes", (req, res) => {
-  const data = pickClientFields(req.body);
+app.post("/api/clientes", async (req, res) => {
+  const data = pickFields(CLIENT_FIELDS, req.body);
   if (!data.cliente) {
     return res.status(400).json({ error: "cliente é obrigatório" });
   }
-  const columns = CLIENT_FIELDS.filter((f) => data[f] !== undefined);
-  const placeholders = columns.map((c) => `@${c}`).join(", ");
-  const info = db
-    .prepare(`INSERT INTO clientes (${columns.join(", ")}) VALUES (${placeholders})`)
-    .run(data);
-  const created = db.prepare("SELECT * FROM clientes WHERE id = ?").get(info.lastInsertRowid);
+  const created = await insertRow("clientes", CLIENT_FIELDS, data);
   res.status(201).json(created);
 });
 
-app.patch("/api/clientes/:id", (req, res) => {
+app.patch("/api/clientes/:id", async (req, res) => {
   const id = Number(req.params.id);
-  const existing = db.prepare("SELECT * FROM clientes WHERE id = ?").get(id);
-  if (!existing) return res.status(404).json({ error: "cliente não encontrado" });
+  const { rows: existing } = await pool.query("SELECT id FROM clientes WHERE id = $1", [id]);
+  if (existing.length === 0) return res.status(404).json({ error: "cliente não encontrado" });
 
-  const data = pickClientFields(req.body);
-  const columns = Object.keys(data);
-  if (columns.length > 0) {
-    const setClause = columns.map((c) => `${c} = @${c}`).join(", ");
-    db.prepare(`UPDATE clientes SET ${setClause} WHERE id = @id`).run({ ...data, id });
-  }
-  const updated = db.prepare("SELECT * FROM clientes WHERE id = ?").get(id);
+  const data = pickFields(CLIENT_FIELDS, req.body);
+  const updated = await updateRow("clientes", CLIENT_FIELDS, id, data);
   res.json(updated);
 });
 
-app.delete("/api/clientes/:id", (req, res) => {
+app.delete("/api/clientes/:id", async (req, res) => {
   const id = Number(req.params.id);
-  const info = db.prepare("DELETE FROM clientes WHERE id = ?").run(id);
-  if (info.changes === 0) return res.status(404).json({ error: "cliente não encontrado" });
+  const { rowCount } = await pool.query("DELETE FROM clientes WHERE id = $1", [id]);
+  if (rowCount === 0) return res.status(404).json({ error: "cliente não encontrado" });
   res.status(204).end();
 });
 
@@ -67,71 +55,42 @@ app.delete("/api/clientes/:id", (req, res) => {
 
 const DEMANDA_FIELDS = ["clienteId", "produto", "mes", "quantidadePrevista", "quantidadeConfirmada", "obs"];
 
-function pickDemandaFields(body) {
-  const out = {};
-  for (const field of DEMANDA_FIELDS) {
-    if (body[field] !== undefined) out[field] = body[field];
-  }
-  return out;
-}
+const DEMANDA_SELECT = `
+  SELECT sop_demanda.*, clientes.cliente AS "clienteNome"
+  FROM sop_demanda
+  LEFT JOIN clientes ON clientes.id = sop_demanda."clienteId"
+`;
 
-app.get("/api/sop/demanda", (req, res) => {
-  const rows = db
-    .prepare(
-      `SELECT sop_demanda.*, clientes.cliente AS clienteNome
-       FROM sop_demanda
-       LEFT JOIN clientes ON clientes.id = sop_demanda.clienteId
-       ORDER BY sop_demanda.mes DESC, sop_demanda.id DESC`
-    )
-    .all();
+app.get("/api/sop/demanda", async (req, res) => {
+  const { rows } = await pool.query(`${DEMANDA_SELECT} ORDER BY sop_demanda.mes DESC, sop_demanda.id DESC`);
   res.json(rows);
 });
 
-app.post("/api/sop/demanda", (req, res) => {
-  const data = pickDemandaFields(req.body);
+app.post("/api/sop/demanda", async (req, res) => {
+  const data = pickFields(DEMANDA_FIELDS, req.body);
   if (!data.produto || !data.mes) {
     return res.status(400).json({ error: "produto e mes são obrigatórios" });
   }
-  const columns = DEMANDA_FIELDS.filter((f) => data[f] !== undefined);
-  const placeholders = columns.map((c) => `@${c}`).join(", ");
-  const info = db
-    .prepare(`INSERT INTO sop_demanda (${columns.join(", ")}) VALUES (${placeholders})`)
-    .run(data);
-  const created = db
-    .prepare(
-      `SELECT sop_demanda.*, clientes.cliente AS clienteNome
-       FROM sop_demanda LEFT JOIN clientes ON clientes.id = sop_demanda.clienteId
-       WHERE sop_demanda.id = ?`
-    )
-    .get(info.lastInsertRowid);
-  res.status(201).json(created);
+  const created = await insertRow("sop_demanda", DEMANDA_FIELDS, data);
+  const { rows } = await pool.query(`${DEMANDA_SELECT} WHERE sop_demanda.id = $1`, [created.id]);
+  res.status(201).json(rows[0]);
 });
 
-app.patch("/api/sop/demanda/:id", (req, res) => {
+app.patch("/api/sop/demanda/:id", async (req, res) => {
   const id = Number(req.params.id);
-  const existing = db.prepare("SELECT * FROM sop_demanda WHERE id = ?").get(id);
-  if (!existing) return res.status(404).json({ error: "registro não encontrado" });
+  const { rows: existing } = await pool.query("SELECT id FROM sop_demanda WHERE id = $1", [id]);
+  if (existing.length === 0) return res.status(404).json({ error: "registro não encontrado" });
 
-  const data = pickDemandaFields(req.body);
-  const columns = Object.keys(data);
-  if (columns.length > 0) {
-    const setClause = columns.map((c) => `${c} = @${c}`).join(", ");
-    db.prepare(`UPDATE sop_demanda SET ${setClause} WHERE id = @id`).run({ ...data, id });
-  }
-  const updated = db
-    .prepare(
-      `SELECT sop_demanda.*, clientes.cliente AS clienteNome
-       FROM sop_demanda LEFT JOIN clientes ON clientes.id = sop_demanda.clienteId
-       WHERE sop_demanda.id = ?`
-    )
-    .get(id);
-  res.json(updated);
+  const data = pickFields(DEMANDA_FIELDS, req.body);
+  await updateRow("sop_demanda", DEMANDA_FIELDS, id, data);
+  const { rows } = await pool.query(`${DEMANDA_SELECT} WHERE sop_demanda.id = $1`, [id]);
+  res.json(rows[0]);
 });
 
-app.delete("/api/sop/demanda/:id", (req, res) => {
+app.delete("/api/sop/demanda/:id", async (req, res) => {
   const id = Number(req.params.id);
-  const info = db.prepare("DELETE FROM sop_demanda WHERE id = ?").run(id);
-  if (info.changes === 0) return res.status(404).json({ error: "registro não encontrado" });
+  const { rowCount } = await pool.query("DELETE FROM sop_demanda WHERE id = $1", [id]);
+  if (rowCount === 0) return res.status(404).json({ error: "registro não encontrado" });
   res.status(204).end();
 });
 
@@ -139,52 +98,34 @@ app.delete("/api/sop/demanda/:id", (req, res) => {
 
 const PRODUCAO_FIELDS = ["produto", "mes", "estoqueAtual", "quantidadePlanejada", "quantidadeProduzida", "status", "obs"];
 
-function pickProducaoFields(body) {
-  const out = {};
-  for (const field of PRODUCAO_FIELDS) {
-    if (body[field] !== undefined) out[field] = body[field];
-  }
-  return out;
-}
-
-app.get("/api/sop/producao", (req, res) => {
-  const rows = db.prepare("SELECT * FROM sop_producao ORDER BY mes DESC, id DESC").all();
+app.get("/api/sop/producao", async (req, res) => {
+  const { rows } = await pool.query("SELECT * FROM sop_producao ORDER BY mes DESC, id DESC");
   res.json(rows);
 });
 
-app.post("/api/sop/producao", (req, res) => {
-  const data = pickProducaoFields(req.body);
+app.post("/api/sop/producao", async (req, res) => {
+  const data = pickFields(PRODUCAO_FIELDS, req.body);
   if (!data.produto || !data.mes) {
     return res.status(400).json({ error: "produto e mes são obrigatórios" });
   }
-  const columns = PRODUCAO_FIELDS.filter((f) => data[f] !== undefined);
-  const placeholders = columns.map((c) => `@${c}`).join(", ");
-  const info = db
-    .prepare(`INSERT INTO sop_producao (${columns.join(", ")}) VALUES (${placeholders})`)
-    .run(data);
-  const created = db.prepare("SELECT * FROM sop_producao WHERE id = ?").get(info.lastInsertRowid);
+  const created = await insertRow("sop_producao", PRODUCAO_FIELDS, data);
   res.status(201).json(created);
 });
 
-app.patch("/api/sop/producao/:id", (req, res) => {
+app.patch("/api/sop/producao/:id", async (req, res) => {
   const id = Number(req.params.id);
-  const existing = db.prepare("SELECT * FROM sop_producao WHERE id = ?").get(id);
-  if (!existing) return res.status(404).json({ error: "registro não encontrado" });
+  const { rows: existing } = await pool.query("SELECT id FROM sop_producao WHERE id = $1", [id]);
+  if (existing.length === 0) return res.status(404).json({ error: "registro não encontrado" });
 
-  const data = pickProducaoFields(req.body);
-  const columns = Object.keys(data);
-  if (columns.length > 0) {
-    const setClause = columns.map((c) => `${c} = @${c}`).join(", ");
-    db.prepare(`UPDATE sop_producao SET ${setClause} WHERE id = @id`).run({ ...data, id });
-  }
-  const updated = db.prepare("SELECT * FROM sop_producao WHERE id = ?").get(id);
+  const data = pickFields(PRODUCAO_FIELDS, req.body);
+  const updated = await updateRow("sop_producao", PRODUCAO_FIELDS, id, data);
   res.json(updated);
 });
 
-app.delete("/api/sop/producao/:id", (req, res) => {
+app.delete("/api/sop/producao/:id", async (req, res) => {
   const id = Number(req.params.id);
-  const info = db.prepare("DELETE FROM sop_producao WHERE id = ?").run(id);
-  if (info.changes === 0) return res.status(404).json({ error: "registro não encontrado" });
+  const { rowCount } = await pool.query("DELETE FROM sop_producao WHERE id = $1", [id]);
+  if (rowCount === 0) return res.status(404).json({ error: "registro não encontrado" });
   res.status(204).end();
 });
 
@@ -197,6 +138,15 @@ app.get(/^(?!\/api).*/, (req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`API rodando em http://localhost:${PORT}`);
-});
+
+init()
+  .then(() => seedIfEmpty())
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`API rodando em http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("Erro ao inicializar o banco:", err);
+    process.exit(1);
+  });
