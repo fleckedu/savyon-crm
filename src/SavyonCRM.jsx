@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Search, Users, TrendingUp, Clock, Archive, X, Mail, Phone, Building2, MapPin, Globe, ChevronLeft, ChevronRight, Plus, Pencil, Check, Loader2, AlertCircle, LayoutGrid, Table2, ArrowRight, ClipboardList, Ship, Truck, Trash2 } from "lucide-react";
+import { Search, Users, TrendingUp, Clock, Archive, X, Mail, Phone, Building2, MapPin, Globe, ChevronLeft, ChevronRight, Plus, Pencil, Check, Loader2, AlertCircle, LayoutGrid, Table2, ArrowRight, ClipboardList, Ship, Truck, Trash2, Package } from "lucide-react";
 import SOPTab from "./SOPTab";
+import ProdutosTab from "./ProdutosTab";
 
 const STATUS_STYLE = {
   Ativo: { bg: "#E8F3EC", fg: "#2F7D5E", dot: "#2F7D5E" },
@@ -521,8 +522,11 @@ export default function SavyonCRM() {
             <button onClick={() => setView("sop")} className={"px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1.5 " + (view === "sop" ? "bg-white shadow-sm text-gray-800" : "text-gray-500")}>
               <ClipboardList size={14} /> S&OP
             </button>
+            <button onClick={() => setView("produtos")} className={"px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1.5 " + (view === "produtos" ? "bg-white shadow-sm text-gray-800" : "text-gray-500")}>
+              <Package size={14} /> Produtos
+            </button>
           </div>
-          {view !== "sop" && (
+          {view !== "sop" && view !== "produtos" && (
           <div className="relative flex-1 min-w-[220px]">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input value={query} onChange={(e) => resetPage(setQuery)(e.target.value)} placeholder="Buscar por nome, e-mail, contato ou país..."
@@ -543,6 +547,8 @@ export default function SavyonCRM() {
 
         {view === "sop" ? (
           <SOPTab clientes={clientes} onOpenClient={(c) => setSelectedId(c.id)} onDeleteClient={handleDeleteClient} />
+        ) : view === "produtos" ? (
+          <ProdutosTab />
         ) : view === "funil" ? (
           <>
             <div className="text-sm text-gray-500 mb-3">

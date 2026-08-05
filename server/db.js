@@ -63,6 +63,31 @@ async function init() {
       obs TEXT
     )
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS produtos (
+      id SERIAL PRIMARY KEY,
+      codigo TEXT NOT NULL,
+      nome TEXT,
+      composicao TEXT,
+      "larguraM" DOUBLE PRECISION,
+      "larguraPol" DOUBLE PRECISION,
+      "rendimentoMt" DOUBLE PRECISION,
+      "rendimentoYd" DOUBLE PRECISION,
+      gramatura DOUBLE PRECISION,
+      "precoKg" DOUBLE PRECISION,
+      "precoMetroUsd" DOUBLE PRECISION,
+      "precoYardUsd" DOUBLE PRECISION,
+      "precoYard10" DOUBLE PRECISION,
+      "precoMetroEur" DOUBLE PRECISION,
+      "preco7Mt" DOUBLE PRECISION,
+      "moqMt" DOUBLE PRECISION,
+      "moqYd" DOUBLE PRECISION,
+      "precoKg5" DOUBLE PRECISION,
+      "precoMetro5" DOUBLE PRECISION
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS produtos_codigo_idx ON produtos (codigo)`);
 }
 
 async function insertRow(table, allFields, data) {
